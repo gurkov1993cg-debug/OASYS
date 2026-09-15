@@ -7,8 +7,6 @@ on:
     paths:
       - "KronosPlayer-v0.2-GitHub-ready.zip"
       - ".github/workflows/oasys.yml"
-  pull_request:
-    branches: [ main ]
 
 permissions:
   contents: read
@@ -24,7 +22,7 @@ jobs:
 
       - name: Unpack source
         run: |
-          rm -rf source
+          rm -rf source build-linux
           mkdir source
           unzip -q KronosPlayer-v0.2-GitHub-ready.zip -d source
 
@@ -43,16 +41,23 @@ jobs:
 
   macos-intel:
     name: macOS Intel x86_64
-    runs-on: macos-13
+    runs-on: macos-15-intel
     needs: linux-core
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Show runner
+        run: |
+          uname -a
+          uname -m
+          xcodebuild -version
+          cmake --version
+
       - name: Unpack source
         run: |
-          rm -rf source
+          rm -rf source build-mac
           mkdir source
           unzip -q KronosPlayer-v0.2-GitHub-ready.zip -d source
 
@@ -77,11 +82,19 @@ jobs:
           APP="$(find build-mac -type d -name 'KronosPlayer.app' | head -n 1)"
           if [ -z "$APP" ]; then
             echo "KronosPlayer.app was not produced."
-            find build-mac -maxdepth 4 -type d -name '*.app' -print
+            find build-mac -maxdepth 6 -type d -name '*.app' -print
             exit 1
           fi
           echo "path=$APP" >> "$GITHUB_OUTPUT"
           echo "Found: $APP"
+
+      - name: Verify Intel binary
+        shell: bash
+        run: |
+          BIN="${{ steps.app.outputs.path }}/Contents/MacOS/KronosPlayer"
+          test -f "$BIN"
+          file "$BIN"
+          lipo -info "$BIN"
 
       - name: Package app
         shell: bash
